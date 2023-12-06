@@ -10,7 +10,10 @@ import minitorch
 class Network(minitorch.Module):
     def __init__(self, hidden_layers):
         super().__init__()
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Task 1.5.
+        self.layer1 = Linear(2, hidden_layers)
+        self.layer2 = Linear(hidden_layers, hidden_layers)
+        self.layer3 = Linear(hidden_layers, 1)
 
     def forward(self, x):
         middle = [h.relu() for h in self.layer1.forward(x)]
@@ -39,7 +42,14 @@ class Linear(minitorch.Module):
             )
 
     def forward(self, inputs):
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Task 1.5.
+        output = []
+        for i in range(len(self.bias)):
+            val = self.bias[i].value
+            for j in range(len(self.weights)):
+                val += self.weights[j][i].value * inputs[j]
+            output.append(val)
+        return output
 
 
 def default_log_fn(epoch, total_loss, correct, losses):
@@ -75,14 +85,14 @@ class ScalarTrain:
                 y = data.y[i]
                 x_1 = minitorch.Scalar(x_1)
                 x_2 = minitorch.Scalar(x_2)
-                out = self.model.forward((x_1, x_2))
+                output = self.model.forward((x_1, x_2))
 
                 if y == 1:
-                    prob = out
-                    correct += 1 if out.data > 0.5 else 0
+                    prob = output
+                    correct += 1 if output.data > 0.5 else 0
                 else:
-                    prob = -out + 1.0
-                    correct += 1 if out.data < 0.5 else 0
+                    prob = -output + 1.0
+                    correct += 1 if output.data < 0.5 else 0
                 loss = -prob.log()
                 (loss / data.N).backward()
                 total_loss += loss.data

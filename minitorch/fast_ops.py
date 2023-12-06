@@ -159,7 +159,21 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Task 3.1.
+        if (
+            (len(in_shape) == len(out_shape))
+            and (in_shape == out_shape).all()
+            and (in_strides == out_strides).all()
+        ):
+            for i in prange(len(out)):
+                out[i] = fn(in_storage[i])
+        else:
+            for i in prange(len(out)):
+                in_idx = in_shape.copy()
+                out_idx = out_shape.copy()
+                to_index(i, out_shape, out_idx)
+                broadcast_index(out_idx, out_shape, in_shape, in_idx)
+                out[i] = fn(in_storage[index_to_position(in_idx, in_strides)])
 
     return njit(parallel=True)(_map)  # type: ignore
 
@@ -197,7 +211,29 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Task 3.1.
+        if (
+            (len(a_shape) == len(b_shape))
+            and (a_strides == b_strides).all()
+            and (a_shape == b_shape).all()
+            and (b_strides == out_strides).all()
+        ):
+            for i in prange(len(out)):
+                out[i] = fn(a_storage[i], b_storage[i])
+        else:
+            for i in prange(len((out))):
+                a_idx = a_shape.copy()
+                b_idx = b_shape.copy()
+                out_idx = out_shape.copy()
+
+                to_index(i, out_shape, out_idx)
+                broadcast_index(out_idx, out_shape, a_shape, a_idx)
+                broadcast_index(out_idx, out_shape, b_shape, b_idx)
+
+                out[i] = fn(
+                    a_storage[index_to_position(a_idx, a_strides)],
+                    b_storage[index_to_position(b_idx, b_strides)],
+                )
 
     return njit(parallel=True)(_zip)  # type: ignore
 
@@ -230,7 +266,20 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Task 3.1.
+
+        for i in prange(len(out)):
+            out_idx = out_shape.copy()
+            to_index(i, out_shape, out_idx)
+            output = out[i]
+            a_pos = index_to_position(out_idx, a_strides)
+            strides = a_strides[reduce_dim]
+
+            for j in range(a_shape[reduce_dim]):
+                output = fn(output, a_storage[a_pos])
+                a_pos += strides
+
+            out[i] = output
 
     return njit(parallel=True)(_reduce)  # type: ignore
 
@@ -279,7 +328,20 @@ def _tensor_matrix_multiply(
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # Task 3.2
+    for i in prange(out_shape[0]):
+        for j in range(out_shape[1]):
+            for k in range(out_shape[2]):
+                val = 0.0
+                a_inner = i * a_batch_stride + j * a_strides[1]
+                b_inner = i * b_batch_stride + k * b_strides[2]
+
+                for _ in range(a_shape[2]):
+                    val += a_storage[a_inner] * b_storage[b_inner]
+                    a_inner += a_strides[2]
+                    b_inner += b_strides[1]
+
+                out[i * out_strides[0] + j * out_strides[1] + k * out_strides[2]] = val
 
 
 tensor_matrix_multiply = njit(parallel=True, fastmath=True)(_tensor_matrix_multiply)
